@@ -1,3 +1,8 @@
+cmake-build-debug
+build
+.idea
+*.kdev4
+bin
 # Prerequisites
 *.d
 
