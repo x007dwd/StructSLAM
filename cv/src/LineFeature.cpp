@@ -18,9 +18,6 @@ namespace ygz {
 
     }
 
-    void LineExtract::ExtractLineDepth(){}
-
-
     void LineExtract::DetectLine(const Mat &Image, vector<LineFeature> &LineFeatures) {
 
         assert(Image.type() == CV_32F);
