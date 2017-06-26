@@ -169,8 +169,9 @@ namespace ygz {
         extern float trace_extraSlackOnTH;
 
         extern int lineLenThreshold;
-        extern  double msld_sample_interval;
-
+        extern double msld_sample_interval;
+        extern int min_feature_matches;
+        extern int line_match_number_weight;
     }
 }
 

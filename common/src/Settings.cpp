@@ -207,6 +207,9 @@ namespace ygz {
         int lineLenThreshold = 10;
         double msld_sample_interval = 2.0;
 
+        int min_feature_matches = 5;
+        int line_match_number_weight = 10;
+
 
     void initSettings() {
         // compute the scale factors in each frame

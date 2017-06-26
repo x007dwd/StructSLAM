@@ -94,15 +94,20 @@ namespace ygz {
         void setDarkLightingParam();
 
         void setTrackParam();
+
         void setMatchParam();
-        void line_match(const std::vector<LineFeature> &vlf1, const std::vector<LineFeature> &vlf2, std::vector<std::vector<int>>& matches);
+
+        void line_match(const std::vector<LineFeature> &vlf1, const std::vector<LineFeature> &vlf2,
+                        std::vector<std::vector<int>> &matches);
 
         void MatchLine(const std::vector<LineFeature> &lf1, const std::vector<LineFeature> &lf2,
-                       std::vector<std::vector<int>>& matches);
+                       std::vector<std::vector<int>> &matches);
 
         void TrackLine(const std::vector<LineFeature> &lf1, const std::vector<LineFeature> &lf2,
-                       std::vector<std::vector<int>>& matches);
+                       std::vector<std::vector<int>> &matches);
 
+        void GetTransformPtsLineRansac(const vector<vector<int>> lineMatches,
+                                       vector<vector<int>>& outMatches);
 
         // data
 

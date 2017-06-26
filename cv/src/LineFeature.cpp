@@ -54,7 +54,7 @@ namespace ygz {
         cv::Sobel(GrayFloat, xGradImg, ddepth, 1, 0, 3); // Gradient X
         cv::Sobel(GrayFloat, yGradImg, ddepth, 0, 1, 3); // Gradient Y
 
-        for (int i=0; i<LineFeatures.size(); ++i)  {
+        for (int i = 0; i < LineFeatures.size(); ++i) {
             //	computeMSLD(lines[i], &xGradImg, &yGradImg);
             LineFeatures[i].mDirection = LineFeatures[i].getGradient(xGradImg, yGradImg);
             ComputeLineDesc(LineFeatures[i], xGradImg, yGradImg);
@@ -307,10 +307,19 @@ namespace ygz {
     void LineExtract::TrackLine(const vector<LineFeature> &vlf1, const vector<LineFeature> &vlf2,
                                 vector<vector<int>> &matches) {
 
-        if(fast_motion)
+        if (fast_motion)
             setFastTrackParam();
         if (dark_lighting)
             setDarkLightingParam();
         line_match(vlf1, vlf2, matches);
     }
+
+    void
+    LineExtract::GetTransformPtsLineRansac(const vector<vector<int>> lineMatches, vector<vector<int>> &outMatches) {
+        int nln = lineMatches.size();
+
+    }
+
+    void LineExtract::ComputeLine
+
 }
