@@ -8,6 +8,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "ygz/SparePoint.h"
 #include <opencv2/highgui/highgui.hpp>
+#include "lsd/lsd.h"
 
 using namespace cv;
 
@@ -714,11 +715,11 @@ namespace ygz {
 
             int wl = mpCam->mw[lvl], hl = mpCam->mh[lvl];
 
-            int lpc_n = 0;
-            float *lpc_u = pc_u[lvl];
-            float *lpc_v = pc_v[lvl];
-            float *lpc_idepth = pc_idepth[lvl];
-            float *lpc_color = pc_color[lvl];
+//            int lpc_n = 0;
+//            float *lpc_u = pc_u[lvl];
+//            float *lpc_v = pc_v[lvl];
+//            float *lpc_idepth = pc_idepth[lvl];
+//            float *lpc_color = pc_color[lvl];
 
             for (int y = 2; y < hl - 2; y++)
                 for (int x = 2; x < wl - 2; x++) {
@@ -734,18 +735,15 @@ namespace ygz {
                         char > (y, x);
                         pc_buffer[lvl].push_back(ptbuf);
 
-                        if (!std::isfinite(lpc_color[lpc_n]) || !(idepthl[i] > 0)) {
+                        if (!std::isfinite(ptbuf.color) || !(idepthl[i] > 0)) {
                             idepthl[i] = -1;
                             continue; // just skip if something is wrong.
                         }
-                        lpc_n++;
                     } else
                         idepthl[i] = -1;
 
                     weightSumsl[i] = 1;
                 }
-
-
         }
     }
 
@@ -753,11 +751,14 @@ namespace ygz {
     // make coarse tracking templates for latstRef.
     void Frame::makeCoarseDepthFromStereo(shared_ptr<Frame> frame) {
 
+        mIDepthLeft.resize(setting::numPyramid);
+        for (int lvl = 0; lvl < setting::numPyramid; ++lvl) {
+            mIDepthLeft[lvl] = Mat::zeros(mpCam->mh[lvl], mpCam->mw[lvl], CV_32F);
+            mWeightSumsLeft[lvl] = Mat::zeros(mpCam->mh[lvl], mpCam->mw[lvl], CV_32F);
+
+        }
         float *idepth = (float *) (mIDepthLeft[0].data);
         float *weightSums = (float *) (mWeightSumsLeft[0].data);
-
-        memset(idepth, 0, sizeof(float) * mpCam->mw[0] * mpCam->mh[0]); // memset用于一段内存块中填充值
-        memset(weightSums, 0, sizeof(float) * mpCam->mw[0] * mpCam->mh[0]);
 
         for (shared_ptr<SparePoint> pPoint : frame->vPointsLeft) {
             Vector3f KliP = Vector3f((pPoint->u - mpCam->mcx[0]) * mpCam->mfxi[0],
@@ -829,6 +830,7 @@ namespace ygz {
         dialteIDepth2ToTop();
         NormalizeDepth(frame->mPyramidLeft);
     }
+
 
 
 } //namespace ygz

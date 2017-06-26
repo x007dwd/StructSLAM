@@ -30,10 +30,7 @@ namespace ygz {
     }
 
     CoarseTracker::~CoarseTracker() {
-        for (auto p : ptrToDelete) {
-            delete[] p;
-        }
-        ptrToDelete.clear();
+
     }
 
     SE3d CoarseTracker::InsertStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp,
@@ -171,12 +168,12 @@ namespace ygz {
         UpdateLastFrame();
 
         mpCurrentFrame->makeGradient(mpCurrentFrame->mPyramidLeft, mpCurrentFrame->mGradxPyramidLeft,
-                     mpCurrentFrame->mGradyPyramidLeft,
-                     mpCurrentFrame->mAbsSquaredGradLeft);
+                                     mpCurrentFrame->mGradyPyramidLeft,
+                                     mpCurrentFrame->mAbsSquaredGradLeft);
 
         mpCurrentFrame->makeGradient(mpCurrentFrame->mPyramidRight, mpCurrentFrame->mGradxPyramidRight,
-                     mpCurrentFrame->mGradyPyramidRight,
-                     mpCurrentFrame->mAbsSquaredGradRight);
+                                     mpCurrentFrame->mGradyPyramidRight,
+                                     mpCurrentFrame->mAbsSquaredGradRight);
         cv::Mat SelectMapLeft, SelectMapRight;
 
         int numMapPoints = 0;
@@ -476,9 +473,6 @@ namespace ygz {
     }
 
 
-
-
-
     void CoarseTracker::CalcGS(int lvl, Matrix6d &H_out, ygz::Vector6d &b_out, const Sophus::SE3d &refToNew) {
         acc.initialize();
 
@@ -643,7 +637,6 @@ namespace ygz {
 
             res_pt_buf.push_back(pt);
         }
-//        buf_warped_n = numTermsInWarped;
 
         Vector6d rs;
         rs[0] = E;
@@ -655,6 +648,102 @@ namespace ygz {
 
         return rs;
     }
+
+    /***
+     * 在IMU不可用的时候，可以使用多中尝试
+     * 1.
+     */
+
+    void CoarseTracker::makeTries(vector<SE3d> &vTries, SE3d last_se3, SE3d last2_se3) {
+        // get last delta-movement.
+        vTries.push_back(last_se3.inverse() * last2_se3); // assume constant motion.
+        vTries.push_back(last_se3.inverse() * last_se3.inverse() * last2_se3); // assume double motion (frame skipped)
+        vTries.push_back(SE3d::exp(last_se3.log() * 0.5).inverse() * last2_se3); // assume half motion.
+        vTries.push_back(last2_se3); // assume zero motion.
+        vTries.push_back(SE3d());         // assume zero motion FROM KF.
+
+        float rot_delta = 0.02;
+
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, 0, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, rot_delta, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, 0, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, 0, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, -rot_delta, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, 0, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, rot_delta, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, rot_delta, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, 0, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, rot_delta, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, -rot_delta, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, 0, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, -rot_delta, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, rot_delta, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, 0, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, -rot_delta, 0), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, 0, -rot_delta, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, 0, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, -rot_delta, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, -rot_delta, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, rot_delta, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, -rot_delta, rot_delta, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, -rot_delta, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, -rot_delta, rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, rot_delta, -rot_delta), Eigen::Vector3d(0, 0, 0)));
+        vTries.push_back(
+                last_se3.inverse() * last2_se3 *
+                SE3d(Eigen::Quaterniond(1, rot_delta, rot_delta, rot_delta), Eigen::Vector3d(0, 0, 0)));
+    }
+
 
     bool CoarseTracker::TrackNewCoarse() {
 
@@ -719,12 +808,13 @@ namespace ygz {
             sel.currentPotential = 3;
             int npts;
             if (lvl == 0) {
-                npts = sel.makeMaps(firstFrame, floatStatusMap, densities[lvl] * mpCam->mw[0] * mpCam->mh[0], 1, false, 2);
+                npts = sel.makeMaps(firstFrame, floatStatusMap, densities[lvl] * mpCam->mw[0] * mpCam->mh[0], 1, false,
+                                    2);
                 newFrame->FloatMapToPoint(float_map, newFrame->vPointsLeft);
-            }
-            else
+            } else
                 npts = sel.makePixelStatus(firstFrame->mGradxPyramidLeft[lvl], firstFrame->mGradyPyramidLeft[lvl],
-                                           boolStatusMap, mpCam->mw[lvl], mpCam->mh[lvl], densities[lvl] * mpCam->mw[0] * mpCam->mh[0]);
+                                           boolStatusMap, mpCam->mw[lvl], mpCam->mh[lvl],
+                                           densities[lvl] * mpCam->mw[0] * mpCam->mh[0]);
         }
     }
 

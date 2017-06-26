@@ -7,6 +7,7 @@ add_library(ygz-cv
         src/PixelSelector.cpp
         src/Align.cpp
         src/LKFlow.cpp
-        src/LineFeature.cpp src/LineFeature.h)
+        src/LineFeature.cpp
+        )
 
 target_link_libraries(ygz-cv ygz-common ygz-util ${THIRD_PARTY_LIBS})

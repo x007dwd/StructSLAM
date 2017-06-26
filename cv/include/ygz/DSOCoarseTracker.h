@@ -121,27 +121,18 @@ namespace ygz {
          * @param[out] resiudal in Vector4d
          */
         bool TrackNewCoarse();
-
-
+        /**
+         * @brief 根据上一帧的运动构造若干运动量，用于尝试。
+         * @param[out] vTries 运动量几何
+         * @param[in] last_se3 上一帧的位姿
+         * @param[in] last2_se3 倒数第二帧的位姿
+         */
+        void makeTries(vector<SE3d> &vTries, SE3d last_se3, SE3d last2_se3);
 
         // warped buffers
         // 缓存用的buffer, w*h 那么大，也可以看成图像
-//        float *buf_warped_idepth;
-//        float *buf_warped_u;
-//        float *buf_warped_v;
-//        float *buf_warped_dx;
-//        float *buf_warped_dy;
-//        float *buf_warped_residual;
-//        float *buf_warped_weight;
-//        float *buf_warped_refColor;
         vector<res_point_buffer> res_pt_buf;
-//        int buf_warped_n;
 
-//        float *idepth[PYR_LEVELS];
-//        float *weightSums[PYR_LEVELS];
-//        float *weightSums_bak[PYR_LEVELS];
-
-        std::vector<float *> ptrToDelete;    // all allocated memory, will be deleted in deconstructor
         Accumulator6 acc;
 
 

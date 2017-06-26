@@ -10,6 +10,7 @@
 #include "ygz/IMUData.h"
 #include "ygz/IMUPreIntegration.h"
 #include "ygz/SparePoint.h"
+#include "ygz/LineFeature.h"
 
 using cv::Mat;
 using namespace std;
@@ -299,6 +300,7 @@ namespace ygz {
         void makeCoarseDepthFromStereo(shared_ptr<Frame> frame);
 
 
+
         void makeIDepthWeightL();
         void dialteIDepth0To2();
         void dialteIDepth2ToTop();
@@ -390,13 +392,7 @@ namespace ygz {
         // pc buffers
         // 每一层都是w*h的矩阵，w,h为该层金字塔的分辨率
         vector<vector<point_buffer>> pc_buffer;
-        float *pc_u[PYR_LEVELS];            // x 坐标
-        float *pc_v[PYR_LEVELS];            // y 坐标
-        float *pc_idepth[PYR_LEVELS];       // 参考帧的 inv depth
-        float *pc_color[PYR_LEVELS];
-        int pc_n[PYR_LEVELS];               // 每层pyramid的点数量
-
-
+        vector<LineFeature> vLineFeature;
 
     };
 

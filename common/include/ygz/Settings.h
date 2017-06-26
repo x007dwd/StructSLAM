@@ -168,6 +168,9 @@ namespace ygz {
         extern float trace_GNThreshold;
         extern float trace_extraSlackOnTH;
 
+        extern int lineLenThreshold;
+        extern  double msld_sample_interval;
+
     }
 }
 
