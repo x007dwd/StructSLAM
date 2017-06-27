@@ -22,7 +22,7 @@
 #include "ygz/PixelSelector.h"
 #include "ygz/BackendSlidingWindowG2O.h"
 #include "ygz/LineFeature.h"
-
+#include "ygz/LineFeature.h"
 // kitti data set
 string leftFolder = "/home/bobin/data/euroc/MH_01/cam0/data/";
 string rightFolder = "/home/bobin/data/euroc/MH_01/cam1/data/";
@@ -129,6 +129,8 @@ int CoarseTracker::TestStereoMatch() {
 
     srand(time(nullptr));
 
+    LineExtract extractor;
+
     float densities[] = {0.03, 0.05, 0.15, 0.5, 1};
 
     for (int ni = 0; ni < nImages; ni++) {
@@ -181,43 +183,15 @@ int CoarseTracker::TestStereoMatch() {
         int valid = 0;
         // 这里要分一下层，才能把所有的idepth计算完整。
 
-        float *idepth = (float *) (frame->mIDepthLeft[0].data);
-        float *weightSums = (float *) (frame->mWeightSumsLeft[0].data);
-        for (int lvl = 0; lvl < setting::numPyramid; ++lvl) {
-            if (lvl == 0){
-                mPixelSelector.makeMaps(frame, pFloatMap, densities[0]);
 
-                for (int i = 0; i < floatMap.rows; ++i) {
-                    for (int j = 0; j < floatMap.cols; ++j) {
-                        if (i < setting::boarder || j < setting::boarder || i > floatMap.rows - setting::boarder ||
-                            j > floatMap.cols - setting::boarder)
-                            continue;
-                        float type = floatMap.at<float>(i, j);
+        Mat out;
+        cvtColor(imLeftRect, out, CV_GRAY2BGR);
+        vector<LineFeature> feats;
+        extractor.DetectLine(imLeftRect, feats);
+        extractor.drawLine(out,out,feats);
 
-                        if (type < 1e-5)
-                            continue;
-
-                        SparePoint pt(j, i, type, camera);
-                        pt.u_r = pt.u;
-                        pt.v_r = pt.v;
-                        pt.idepth_min_r = 0;
-                        pt.idepth_max_r = NAN;
-                        Vector3f bl;
-                        bl << bf, 0, 0;
-                        PointStatus stat = pt.TraceRight(frame, camera->K, bl);
-
-                        if (stat == PointStatus::IPS_GOOD) {
-                            vecSparePoints.push_back(pt);
-                            idepth[j + floatMap.cols * i] = pt.idepth_r;
-                        } else{
-                            idepth[j + floatMap.cols *i] = 0.01;
-                        }
-
-                    }
-                }
-            }
-        }
-
+        cv::imshow("test", out);
+        cv::waitKey(1);
 
         LOG(INFO) << "point with valid depth: " << valid << endl;
         cv::imshow("Feature and distance", img_left);

@@ -103,10 +103,10 @@ ADD_LIBRARY(g2o ${G2O_LIB_TYPE}
         #g2o/types/isometry3d_mappings.cpp
         #g2o/types/isometry3d_gradients.cpp
         #g2o/types/isometry3d_gradients.h
-        #g2o/types/vertex_se3.cpp
-        #g2o/types/vertex_se3.h
-        #g2o/types/parameter_se3_offset.cpp
-        #g2o/types/parameter_se3_offset.h
+        g2o/types/vertex_se3.cpp
+        g2o/types/vertex_se3.h
+        g2o/types/parameter_se3_offset.cpp
+        g2o/types/parameter_se3_offset.h
         #g2o/types/edge_se3.cpp
         #g2o/types/edge_se3.h
         #g2o/types/edge_se3_offset.cpp

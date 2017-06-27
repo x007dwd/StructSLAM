@@ -376,4 +376,13 @@ namespace ygz {
         t = uu.inverse() * udr;
     }
 
+    void LineExtract::drawLine(const cv::Mat &src, cv::Mat& output, std::vector<LineFeature>&LineFeatures){
+        output = src.clone();
+
+        for (auto line : LineFeatures) {
+            cv::Point stt(line.mStartPt(0),line.mStartPt(1));
+            cv::Point end(line.mEndPt(0), line.mEndPt(1));
+            cv::line(output,stt, end,Scalar(0,0,255),1,8,0);
+        }
+    }
 }

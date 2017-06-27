@@ -116,6 +116,7 @@ using namespace std;
     };
 
     class LineExtract {
+    public:
         LineExtract();
 
         /**
@@ -123,6 +124,8 @@ using namespace std;
             * @param[in] Image
             */
         void DetectLine(const cv::Mat &Image, std::vector<LineFeature> &LineFeatures);
+
+        void drawLine(const cv::Mat &src, cv::Mat& output, std::vector<LineFeature>&LineFeatures);
 
         /***
          * compute the line descriptor
@@ -159,7 +162,7 @@ using namespace std;
         void ComputeRelativeMotion_svd(vector<Line3d> vLineA, vector<Line3d> vLineB, Matrix3d &R, Vector3d &t);
 
         // data
-
+    private:
         bool fast_motion = false;
         bool dark_lighting = false;
 
