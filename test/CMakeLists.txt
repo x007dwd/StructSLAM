@@ -86,12 +86,12 @@ target_link_libraries(
         ${THIRD_PARTY_LIBS}
 )
 
-#add_executable(
-#        test_stereo_dso testStereoDSO.cpp
-#)
-#
-#target_link_libraries(
-#        test_stereo_dso
-#        ${YGZ_LIBS}
-#        ${THIRD_PARTY_LIBS}
-#)
+add_executable(
+        test_line_match testLineMatch.cpp
+)
+
+target_link_libraries(
+        test_line_match
+        ${YGZ_LIBS}
+        ${THIRD_PARTY_LIBS}
+)

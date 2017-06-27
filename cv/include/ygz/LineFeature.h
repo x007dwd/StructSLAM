@@ -13,7 +13,54 @@
 #include <vector>
 #include "opencv2/highgui/highgui.hpp"
 
+
 namespace ygz {
+using namespace std;
+    struct SegPoint3d{
+        Vector3d pos;
+        Matrix3d cov;
+        Matrix3d U,W;
+        Vector3d  Wsqrt;
+        Vector9d DU;
+        Vector3d dux;
+
+        SegPoint3d(){}
+        SegPoint3d(Vector3d _pos){
+            pos = _pos;
+            cov = Matrix3d::Identity();
+            U = Matrix3d::Identity();
+            W = Matrix3d::Ones();
+        }
+
+        SegPoint3d(Vector3d _pos, Matrix3d _cov){
+            pos = _pos;
+            cov = _cov;
+            Eigen::JacobiSVD<Matrix3d> svd(cov, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            U = svd.matrixU();
+            W = svd.singularValues().asDiagonal();
+            Wsqrt = svd.singularValues();
+            Wsqrt = Wsqrt.array().sqrt();
+//            Matrix3d D = (Wsqrt.array().pow(-1)).asDiagonal();
+//            Matrix3d du = D * U.transpose();
+//            dux = du * pos;
+        }
+    };
+
+    struct Line3d{
+        vector<SegPoint3d> pts;
+        Vector3d EndA, EndB;
+        Matrix3d covA, covB;
+        SegPoint3d rndA, rndB;
+        Vector3d u,d;
+
+        Line3d(){}
+        Line3d(Vector3d _A, Vector3d _B, Matrix3d _covA, Matrix3d _covB){
+            EndA = _A;
+            EndB = _B;
+            covA = _covA;
+            covB = _covB;
+        }
+    };
     struct LineFeature {
         LineFeature() { mGlobalID = -1; }
 
@@ -108,6 +155,8 @@ namespace ygz {
 
         void GetTransformPtsLineRansac(const vector<vector<int>> lineMatches,
                                        vector<vector<int>>& outMatches);
+
+        void ComputeRelativeMotion_svd(vector<Line3d> vLineA, vector<Line3d> vLineB, Matrix3d &R, Vector3d &t);
 
         // data
 

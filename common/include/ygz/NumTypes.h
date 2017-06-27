@@ -19,6 +19,7 @@ using Sophus::SE3d;
 namespace ygz {
     using Eigen::Vector2d;
     using Eigen::Vector3d;
+    using Eigen::Vector4d;
     using Eigen::Vector2f;
     using Eigen::Vector3f;
     using Eigen::Vector4f;
