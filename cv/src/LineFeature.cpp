@@ -21,18 +21,12 @@ namespace ygz {
 
     void LineExtract::DetectLine(const Mat &Image, vector<LineFeature> &LineFeatures) {
 
-        assert(Image.type() == CV_32F);
+        assert(Image.type() == CV_64F && Image.channels() == 1);
         Mat Gray;
-        if (Image.channels() == 3) {
-            cvtColor(Image, Gray, CV_RGB2GRAY);
-        } else {
-            Gray = Image.clone();
-        }
-        Mat GrayFloat;
-        Gray.convertTo(GrayFloat, CV_64F);
+        Gray = Image.clone();
         double *lsd_out;
         int nout;
-        lsd_out = lsd(&nout, (double *) (GrayFloat.data), GrayFloat.cols, GrayFloat.rows);
+        lsd_out = lsd(&nout, (double *) (Gray.data), Gray.cols, Gray.rows);
         LineFeatures.resize(nout);
         double a, b, c, d;
         // lsd output x1,y1,x2,y2,width,p,-log10(NFA)
@@ -47,18 +41,18 @@ namespace ygz {
                 Vector2d start, end;
                 start << a, b;
                 end << c, d;
-                LineFeatures.push_back(LineFeature(start, end, i));
+                LineFeatures[i] = LineFeature(start, end, i);
             }
         }
         cv::Mat xGradImg, yGradImg;
         int ddepth = CV_64F;
-        cv::Sobel(GrayFloat, xGradImg, ddepth, 1, 0, 3); // Gradient X
-        cv::Sobel(GrayFloat, yGradImg, ddepth, 0, 1, 3); // Gradient Y
+        cv::Sobel(Gray, xGradImg, ddepth, 1, 0, 3); // Gradient X
+        cv::Sobel(Gray, yGradImg, ddepth, 0, 1, 3); // Gradient Y
 
         for (int i = 0; i < LineFeatures.size(); ++i) {
-            //	computeMSLD(lines[i], &xGradImg, &yGradImg);
             LineFeatures[i].mDirection = LineFeatures[i].getGradient(xGradImg, yGradImg);
             ComputeLineDesc(LineFeatures[i], xGradImg, yGradImg);
+            LOG(INFO) << "Line Feature " << i << endl;
         }
     }
 
@@ -108,6 +102,7 @@ namespace ygz {
 
     bool LineExtract::ComputeLineDesc(LineFeature &lf, const cv::Mat &xGradient, const Mat &yGradient) {
 
+        assert(!xGradient.empty() && ! yGradient.empty());
         lf.mDirection = lf.getGradient(xGradient, yGradient);
         int s = 5 * xGradient.cols / 800.0;
         double lineLen = (lf.mStartPt - lf.mEndPt).norm();
@@ -119,7 +114,7 @@ namespace ygz {
             Vector2d pt = lf.mStartPt + (lf.mStartPt - lf.mEndPt) * (i * step / lineLen);
 
             bool fail = false;
-            for (int j = -4; j < 4; ++j) {
+            for (int j = -4; j <= 4; ++j) {
                 pt += j * s * lf.mDirection;
                 cv::Point2d cvpt(pt(0), pt(1));
                 cv::Point2d gd(lf.mDirection(0), lf.mDirection(1));
@@ -131,10 +126,11 @@ namespace ygz {
                     GDM_cols.push_back(psr[3]);
                 } else {
                     fail = true;
-                    continue;
+                    break;
                 }
 
             }
+            if (fail == true) continue;
             GDM.push_back(GDM_cols);
 
         }
@@ -142,7 +138,7 @@ namespace ygz {
         if (GDM.size() == 0) {
             for (int i = 0; i < MS.rows; ++i)
                 MS.at<double>(i, 0) = rand(); // if not computable, assign random num
-            lf.mDescriptor = MS;
+            lf.mDescriptor = MS.clone();
             return 0;
         }
 
@@ -161,14 +157,19 @@ namespace ygz {
             MS.at<double>(i + 36, 0) = std;
         }
         // normalize mean and std vector, respcectively
-        MS.rowRange(0, 36) = MS.rowRange(0, 36) / cv::norm(MS.rowRange(0, 36));
-        MS.rowRange(36, 72) = MS.rowRange(36, 72) / cv::norm(MS.rowRange(36, 72));
-        for (int i = 0; i < MS.rows; ++i) {
-            if (MS.at<double>(i, 0) > 0.4)
-                MS.at<double>(i, 0) = 0.4;
-        }
-        MS = MS / cv::norm(MS);
-        lf.mDescriptor = MS;
+//        LOG(INFO) << MS << endl;
+//        if ((cv::norm(MS.rowRange(36, 72)) < 1e-5) || (cv::norm(MS.rowRange(0, 36)) < 1e-5)) {
+//            lf.mDescriptor = Mat();
+//            return 0;
+//        }
+//        MS.rowRange(0, 36) = MS.rowRange(0, 36) / cv::norm(MS.rowRange(0, 36));
+//        MS.rowRange(36, 72) = MS.rowRange(36, 72) / cv::norm(MS.rowRange(36, 72));
+//        for (int i = 0; i < MS.rows; ++i) {
+//            if (MS.at<double>(i, 0) > 0.4)
+//                MS.at<double>(i, 0) = 0.4;
+//        }
+//        MS = MS / cv::norm(MS);
+//        lf.mDescriptor = MS.clone();
         return 1;
     }
 
@@ -333,7 +334,7 @@ namespace ygz {
     LineExtract::ComputeRelativeMotion_svd(vector<Line3d> vLineA, vector<Line3d> vLineB, Matrix3d &R, Vector3d &t) {
         if (vLineA.size() < 2) {
             cerr << "Error in computeRelativeMotion_svd: input needs at least 2 pairs!\n";
-            return ;
+            return;
         }
         // convert to the representation of Zhang's paper
         for (int i = 0; i < vLineA.size(); ++i) {
@@ -356,8 +357,8 @@ namespace ygz {
         Matrix4d A = Matrix4d::Zero();
         for (int i = 0; i < vLineA.size(); ++i) {
             Matrix4d Ai = Matrix4d::Zero();
-            Ai.block<1,3>(0,1) = vLineA[i].u - vLineB[i].u;
-            Ai.block<3,1>(1,0) = vLineB[i].u - vLineA[i].u;
+            Ai.block<1, 3>(0, 1) = vLineA[i].u - vLineB[i].u;
+            Ai.block<3, 1>(1, 0) = vLineB[i].u - vLineA[i].u;
 
             Ai.bottomRightCorner<3, 3>(1, 1) = SO3d::hat((vLineA[i].u + vLineB[i].u)).matrix();
             A = A + Ai.transpose() * Ai;
@@ -376,13 +377,13 @@ namespace ygz {
         t = uu.inverse() * udr;
     }
 
-    void LineExtract::drawLine(const cv::Mat &src, cv::Mat& output, std::vector<LineFeature>&LineFeatures){
+    void LineExtract::drawLine(const cv::Mat &src, cv::Mat &output, std::vector<LineFeature> &LineFeatures) {
         output = src.clone();
 
         for (auto line : LineFeatures) {
-            cv::Point stt(line.mStartPt(0),line.mStartPt(1));
+            cv::Point stt(line.mStartPt(0), line.mStartPt(1));
             cv::Point end(line.mEndPt(0), line.mEndPt(1));
-            cv::line(output,stt, end,Scalar(0,0,255),1,8,0);
+            cv::line(output, stt, end, Scalar(0, 0, 255), 1, 8, 0);
         }
     }
 }

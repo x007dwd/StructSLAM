@@ -76,7 +76,8 @@ using namespace std;
         static inline Vector3d getHomoPoint(Vector2d pt) {
             Vector3d pt3;
             pt3.head<2>() = pt;
-            pt3(3) = 1;
+            pt3(2) = 1;
+            return  pt3;
         }
 
         inline void CalcLinePara() {

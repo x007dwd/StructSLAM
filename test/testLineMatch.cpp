@@ -35,7 +35,7 @@ shared_ptr<CoarseTracker> pTracker = nullptr;
 
 int main(int argc, char **argv) {
     pTracker = shared_ptr<CoarseTracker>(new CoarseTracker);
-    pTracker->TestTracker();
+    pTracker->TestStereoMatch();
     return 0;
 }
 
@@ -134,7 +134,7 @@ int CoarseTracker::TestStereoMatch() {
     float densities[] = {0.03, 0.05, 0.15, 0.5, 1};
 
     for (int ni = 0; ni < nImages; ni++) {
-        LOG(INFO) << "Loading " << ni << " image" << endl;
+//        LOG(INFO) << "Loading " << ni << " image" << endl;
         // Read left and right images from file
         imLeft = cv::imread(vstrImageLeft[ni], CV_LOAD_IMAGE_UNCHANGED);
         imRight = cv::imread(vstrImageRight[ni], CV_LOAD_IMAGE_UNCHANGED);
@@ -173,11 +173,6 @@ int CoarseTracker::TestStereoMatch() {
         // 左右眼各提一次
         LOG(INFO) << "Detecting points in frame " << frame->mnId << endl;
 
-
-        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-        double timeCost = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
-        LOG(INFO) << "stereo matching cost time: " << timeCost << endl;
-
         Mat img_left, img_right;
         cv::cvtColor(imLeftRect, img_left, cv::COLOR_GRAY2BGR);
         int valid = 0;
@@ -185,10 +180,18 @@ int CoarseTracker::TestStereoMatch() {
 
 
         Mat out;
+        Mat imLine;
+        imLeftRect.convertTo(imLine,CV_64F);
         cvtColor(imLeftRect, out, CV_GRAY2BGR);
         vector<LineFeature> feats;
-        extractor.DetectLine(imLeftRect, feats);
+        extractor.DetectLine(imLine, feats);
         extractor.drawLine(out,out,feats);
+
+        std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+        double timeCost = std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+        LOG(INFO) << "lsd cost time: " << timeCost << endl;
+
+
 
         cv::imshow("test", out);
         cv::waitKey(1);

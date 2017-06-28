@@ -204,7 +204,7 @@ namespace ygz {
         int minTraceTestRadius = 2;
         int trace_GNIterations = 3;
 
-        int lineLenThreshold = 10;
+        int lineLenThreshold = 20;
         double msld_sample_interval = 2.0;
 
         int min_feature_matches = 5;

@@ -34,7 +34,7 @@ shared_ptr<CoarseTracker> pTracker = nullptr;
 
 int main(int argc, char **argv) {
     pTracker = shared_ptr<CoarseTracker>(new CoarseTracker);
-    pTracker->TestTracker();
+    pTracker->TestStereoMatch();
     return 0;
 }
 
