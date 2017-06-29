@@ -79,7 +79,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR}/Thirdparty/fast/include
         ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2
-        "/home/bobin/code/libraries/g2o"
+        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o
         ${PROJECT_SOURCE_DIR}/Thirdparty/lsd/include/
         ${EIGEN3_INCLUDE_DIR}
         ${Pangolin_INCLUDE_DIRS}
@@ -95,9 +95,9 @@ set(THIRD_PARTY_LIBS
         ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
         ${PROJECT_SOURCE_DIR}/Thirdparty/fast/build/libfast.so
 #        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-        /home/bobin/code/libraries/g2o/lib/libg2o_types_slam3d.so
-        /home/bobin/code/libraries/g2o/lib/libg2o_core.so
-        /home/bobin/code/libraries/g2o/lib/libg2o_stuff.so
+        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_types_slam3d.so
+        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_core.so
+        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o_stuff.so
         ${PROJECT_SOURCE_DIR}/Thirdparty/lsd/build/liblsd.so
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
