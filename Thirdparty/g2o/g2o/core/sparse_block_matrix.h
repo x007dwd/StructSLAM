@@ -38,10 +38,9 @@
 #include "sparse_block_matrix_ccs.h"
 #include "matrix_structure.h"
 #include "matrix_operations.h"
-#include "../../config.h"
+#include "g2o/config.h"
 
 namespace g2o {
-  using namespace Eigen;
 /**
  * \brief Sparse matrix which uses blocks
  *
@@ -58,7 +57,7 @@ namespace g2o {
  * block sizes than you have to use a dynamic-block matrix (default
  * template argument).  
  */
-template <class MatrixType = MatrixXd >
+template <class MatrixType = MatrixXD >
 class SparseBlockMatrix {
 
   public:
@@ -76,7 +75,7 @@ class SparseBlockMatrix {
      * constructs a sparse block matrix having a specific layout
      * @param rbi: array of int containing the row layout of the blocks. 
      * the component i of the array should contain the index of the first row of the block i+1.
-     * @param rbi: array of int containing the column layout of the blocks. 
+     * @param cbi: array of int containing the column layout of the blocks. 
      *  the component i of the array should contain the index of the first col of the block i+1.
      * @param rb: number of row blocks
      * @param cb: number of col blocks
@@ -222,7 +221,7 @@ class SparseBlockMatrix {
 template < class  MatrixType >
 std::ostream& operator << (std::ostream&, const SparseBlockMatrix<MatrixType>& m);
 
-  typedef SparseBlockMatrix<MatrixXd> SparseBlockMatrixXd;   
+  typedef SparseBlockMatrix<MatrixXD> SparseBlockMatrixXd;   
 
 } //end namespace
 

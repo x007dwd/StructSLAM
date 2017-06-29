@@ -62,21 +62,24 @@ if (NOT OpenCV_FOUND)
     endif ()
 endif ()
 
+set(G2O_ROOT "/home/bobin/code/libraries/g2o")
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(Glog REQUIRED)
+#find_package(G2O REQUIRED)
+
+MESSAGE(STATUS "G2O includes${G2O_INCLUDE_DIR}")
 
 # to show 'include' in QtCreator
 FILE(GLOB_RECURSE INC_ALL "*/*.h")
 add_custom_target(headers SOURCES ${INC_ALL})
-
 include_directories(
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/include
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_SOURCE_DIR}/Thirdparty/fast/include
         ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2
-        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/
+        "/home/bobin/code/libraries/g2o"
         ${PROJECT_SOURCE_DIR}/Thirdparty/lsd/include/
         ${EIGEN3_INCLUDE_DIR}
         ${Pangolin_INCLUDE_DIRS}
@@ -91,7 +94,10 @@ set(THIRD_PARTY_LIBS
         ${Pangolin_LIBRARIES}
         ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
         ${PROJECT_SOURCE_DIR}/Thirdparty/fast/build/libfast.so
-        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+#        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
+        /home/bobin/code/libraries/g2o/lib/libg2o_types_slam3d.so
+        /home/bobin/code/libraries/g2o/lib/libg2o_core.so
+        /home/bobin/code/libraries/g2o/lib/libg2o_stuff.so
         ${PROJECT_SOURCE_DIR}/Thirdparty/lsd/build/liblsd.so
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}

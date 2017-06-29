@@ -41,24 +41,14 @@
 #include "cache.h"
 #include "robust_kernel.h"
 
-#include "../stuff/macros.h"
-#include "../stuff/color_macros.h"
-#include "../stuff/string_tools.h"
-#include "../stuff/misc.h"
+#include "g2o/stuff/macros.h"
+#include "g2o/stuff/color_macros.h"
+#include "g2o/stuff/string_tools.h"
+#include "g2o/stuff/misc.h"
 
 namespace g2o {
 
   using namespace std;
-
-  OptimizableGraph::Data::Data(){
-    _next = 0;
-  }
-  
-  OptimizableGraph::Data::~Data(){
-    if (_next)
-      delete _next;
-  }
-  
 
   OptimizableGraph::Vertex::Vertex() :
     HyperGraph::Vertex(),
@@ -83,12 +73,10 @@ namespace g2o {
 
   OptimizableGraph::Vertex::~Vertex()
   {
-    if (_cacheContainer)
-      delete (_cacheContainer);
-    if (_userData)
-      delete _userData;
+    delete _cacheContainer;
+    delete _userData;
   }
-  
+
   OptimizableGraph::Vertex* OptimizableGraph::Vertex::clone() const
   {
     return 0;
@@ -148,7 +136,7 @@ namespace g2o {
       return 0;
     return v->graph();
   }
-  
+
   const OptimizableGraph* OptimizableGraph::Edge::graph() const{
     if (! _vertices.size())
       return 0;
@@ -173,7 +161,7 @@ namespace g2o {
       cerr << __PRETTY_FUNCTION__ << ": edge not registered with a graph" << endl;
       return false;
     }
-    
+
     assert (_parameters.size() == _parameterIds.size());
     //cerr << __PRETTY_FUNCTION__ << ": encountered " << _parameters.size() << " parameters" << endl;
     for (size_t i=0; i<_parameters.size(); i++){
@@ -242,6 +230,11 @@ namespace g2o {
 
   bool OptimizableGraph::addVertex(HyperGraph::Vertex* v, Data* userData)
   {
+    if (v->id() <0){
+      cerr << __FUNCTION__ << ": FATAL, a vertex with (negative) ID " << v->id() << " cannot be inserted in the graph" << endl;
+      assert(0 && "Invalid vertex id");
+      return false;
+    }
     Vertex* inserted = vertex(v->id());
     if (inserted) {
       cerr << __FUNCTION__ << ": FATAL, a vertex with ID " << v->id() << " has already been registered with this graph" << endl;
@@ -265,22 +258,55 @@ namespace g2o {
   {
     OptimizableGraph::Edge* e = dynamic_cast<OptimizableGraph::Edge*>(e_);
     assert(e && "Edge does not inherit from OptimizableGraph::Edge");
+    //    std::cerr << "subclass of OptimizableGraph::Edge confirmed";
     if (! e)
       return false;
     bool eresult = HyperGraph::addEdge(e);
     if (! eresult)
       return false;
+    //    std::cerr << "called HyperGraph::addEdge" << std::endl;
     e->_internalId = _nextEdgeId++;
+    if (e->numUndefinedVertices())
+      return true;
+    //    std::cerr << "internalId set" << std::endl;
     if (! e->resolveParameters()){
       cerr << __FUNCTION__ << ": FATAL, cannot resolve parameters for edge " << e << endl;
       return false;
     }
+    //    std::cerr << "parameters set" << std::endl;
     if (! e->resolveCaches()){
       cerr << __FUNCTION__ << ": FATAL, cannot resolve caches for edge " << e << endl;
       return false;
-    } 
+    }
+    //    std::cerr << "updating jacobian size" << std::endl;
     _jacobianWorkspace.updateSize(e);
 
+    //    std::cerr << "about to return true" << std::endl;
+
+    return true;
+  }
+
+  bool OptimizableGraph::setEdgeVertex(HyperGraph::Edge* e, int pos, HyperGraph::Vertex* v){
+    if (! HyperGraph::setEdgeVertex(e,pos,v)){
+      return false;
+    }
+    if (!e->numUndefinedVertices()){
+#ifndef NDEBUG
+      OptimizableGraph::Edge* ee = dynamic_cast<OptimizableGraph::Edge*>(e);
+      assert(ee && "Edge is not a OptimizableGraph::Edge");
+#else
+      OptimizableGraph::Edge* ee = static_cast<OptimizableGraph::Edge*>(e);
+#endif
+      if (! ee->resolveParameters()){
+	cerr << __FUNCTION__ << ": FATAL, cannot resolve parameters for edge " << e << endl;
+	return false;
+      }
+      if (! ee->resolveCaches()){
+	cerr << __FUNCTION__ << ": FATAL, cannot resolve caches for edge " << e << endl;
+	return false;
+      }
+      _jacobianWorkspace.updateSize(e);
+    }
     return true;
   }
 
@@ -344,7 +370,7 @@ void OptimizableGraph::discardTop(HyperGraph::VertexSet& vset)
   }
 }
 
-  void OptimizableGraph::setFixed(HyperGraph::VertexSet& vset, bool fixed)
+void OptimizableGraph::setFixed(HyperGraph::VertexSet& vset, bool fixed)
 {
   for (HyperGraph::VertexSet::iterator it=vset.begin(); it!=vset.end(); ++it) {
     OptimizableGraph::Vertex* v = static_cast<OptimizableGraph::Vertex*>(*it);
@@ -352,17 +378,8 @@ void OptimizableGraph::discardTop(HyperGraph::VertexSet& vset)
   }
 }
 
-
 bool OptimizableGraph::load(istream& is, bool createEdges)
 {
-  // scna for the paramers in the whole file
-  if (!_parameters.read(is,&_renamedTypesLookup))
-    return false;
-#ifndef NDEBUG
-  cerr << "Loaded " << _parameters.size() << " parameters" << endl;
-#endif
-  is.clear();
-  is.seekg(ios_base::beg);
   set<string> warnedUnknownTypes;
   stringstream currentLine;
   string token;
@@ -372,11 +389,16 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
   elemBitset[HyperGraph::HGET_PARAMETER] = 1;
   elemBitset.flip();
 
-  Vertex* previousVertex = 0;
+  HyperGraph::GraphElemBitset elemParamBitset;
+  elemParamBitset[HyperGraph::HGET_PARAMETER] = 1;
+
+  HyperGraph::DataContainer* previousDataContainer = 0;
   Data* previousData = 0;
 
+  int lineNumber = 0;
   while (1) {
     int bytesRead = readLine(is, currentLine);
+    lineNumber ++;
     if (bytesRead == -1)
       break;
     currentLine >> token;
@@ -386,7 +408,7 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
 
     // handle commands encoded in the file
     bool handledCommand = false;
-    
+
     if (token == "FIX") {
       handledCommand = true;
       int id;
@@ -405,7 +427,7 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
 
     if (handledCommand)
       continue;
-     
+
     // do the mapping to an internal type if it matches
     if (_renamedTypesLookup.size() > 0) {
       map<string, string>::const_iterator foundIt = _renamedTypesLookup.find(token);
@@ -418,6 +440,26 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
       if (warnedUnknownTypes.count(token) != 1) {
         warnedUnknownTypes.insert(token);
         cerr << CL_RED(__PRETTY_FUNCTION__ << " unknown type: " << token) << endl;
+      }
+      continue;
+    }
+
+    // first handle the parameters
+    HyperGraph::HyperGraphElement* pelement = factory->construct(token, elemParamBitset);
+    if (pelement) { // not a parameter or otherwise unknown tag
+      assert(pelement->elementType() == HyperGraph::HGET_PARAMETER && "Should be a param");
+      Parameter* p = static_cast<Parameter*>(pelement);
+      int pid;
+      currentLine >> pid;
+      p->setId(pid);
+      bool r = p->read(currentLine);
+      if (! r) {
+        cerr << __PRETTY_FUNCTION__ << ": Error reading data " << token << " for parameter " << pid << endl;
+        delete p;
+      } else {
+        if (! _parameters.addParameter(p) ){
+          cerr << __PRETTY_FUNCTION__ << ": Parameter of type:" << token << " id:" << pid << " already defined" << endl;
+        }
       }
       continue;
     }
@@ -437,7 +479,7 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
         cerr << __PRETTY_FUNCTION__ << ": Failure adding Vertex, " << token << " " << id << endl;
         delete v;
       } else {
-        previousVertex = v;
+        previousDataContainer = v;
       }
     }
     else if (dynamic_cast<Edge*>(element)) {
@@ -457,26 +499,35 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
         Vertex* from = vertex(id1);
         Vertex* to = vertex(id2);
         int doInit=0;
-        if ((!from || !to) ) {
-          if (! createEdges) {
-            cerr << __PRETTY_FUNCTION__ << ": Unable to find vertices for edge " << token << " " << id1 << " <-> " << id2 << endl;
-            delete e;
-          } else {
-            if (! from) {
-              from=e->createFrom();
-              from->setId(id1);
-              addVertex(from);
-              doInit=2;
-            }
-            if (! to) {
-              to=e->createTo();
-              to->setId(id2);
-              addVertex(to);
-              doInit=1;
-            }
-          }
-        }
-        if (from && to) {
+
+	if (createEdges){
+	  if (! from && id1 >=0) {
+	    from=e->createVertex(0);
+	    from->setId(id1);
+	    addVertex(from);
+	    doInit=2;
+	  }
+	  if (! to && id2 >=0) {
+	    to=e->createVertex(1);
+	    to->setId(id2);
+	    addVertex(to);
+	    doInit=1;
+	  }
+	  if (id1<0 || id2<0)
+	    doInit = 0;
+	} else {
+	  if ( (!from && id1>=0) ){
+            cerr << __PRETTY_FUNCTION__ << ": Unable to find vertex for edge " << token << " " << id1 << " <-> " << id2 << endl;
+	    delete e;
+	    e=0;
+	  }
+	  if (! to && id2>=0 ){
+            cerr << __PRETTY_FUNCTION__ << ": Unable to find vertex for edge " << token << " " << id1 << " <-> " << id2 << endl;
+	    delete e;
+	    e=0;
+	  }
+	}
+	if (e){
           e->setVertex(0, from);
           e->setVertex(1, to);
           e->read(currentLine);
@@ -485,7 +536,7 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
             delete e;
           } else {
             switch (doInit){
-              case 1: 
+              case 1:
                 {
                   HyperGraph::VertexSet fromSet;
                   fromSet.insert(from);
@@ -504,18 +555,35 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
           }
         }
       }
-      else {
-        vector<int> ids;
-        ids.resize(numV);
-        for (int l = 0; l < numV; ++l)
-          currentLine >> ids[l];
+      else { // numV != 2
+	vector<int> ids;
+	if(numV!=0){
+	  ids.resize(numV);
+	  for (int l = 0; l < numV; ++l)
+	    currentLine >> ids[l];
+	}
+	else{
+	  string buff;
+	  currentLine >> buff;
+	  while(buff != "||"){
+	    ids.push_back(atoi(buff.c_str()));
+	    currentLine >> buff;
+	  }
+	  numV = ids.size();
+	  e->resize(numV);
+	}
         bool vertsOkay = true;
         for (int l = 0; l < numV; ++l) {
-          e->setVertex(l, vertex(ids[l]));
-          if (e->vertex(l) == 0) {
-            vertsOkay = false;
-            break;
-          }
+	  int vertexId=ids[l];
+	  HyperGraph::Vertex* v=0;
+	  if (vertexId != HyperGraph::UnassignedId){
+	    v = vertex(vertexId);
+	    e->setVertex(l,v);
+	    if (!v) {
+	      vertsOkay = false;
+	      break;
+	    }
+	  }
         }
         if (! vertsOkay) {
           cerr << __PRETTY_FUNCTION__ << ": Unable to find vertices for edge " << token;
@@ -528,43 +596,51 @@ bool OptimizableGraph::load(istream& is, bool createEdges)
         } else {
           bool r = e->read(currentLine);
           if (!r || !addEdge(e)) {
-            cerr << __PRETTY_FUNCTION__ << ": Unable to add edge " << token; 
+            cerr << __PRETTY_FUNCTION__ << ": Unable to add edge " << token;
             for (int l = 0; l < numV; ++l) {
               if (l > 0)
                 cerr << " <->";
               cerr << " " << ids[l];
             }
             delete e;
+	    e=0;
           }
         }
       }
+      previousDataContainer = e;
     } else if (dynamic_cast<Data*>(element)) { // reading in the data packet for the vertex
       //cerr << "read data packet " << token << " vertex " << previousVertex->id() << endl;
       Data* d = static_cast<Data*>(element);
       bool r = d->read(currentLine);
       if (! r) {
-	cerr << __PRETTY_FUNCTION__ << ": Error reading data " << token << " for vertex " << previousVertex->id() << endl;
+	cerr << __PRETTY_FUNCTION__ << ": Error reading data " << token << " at line " << lineNumber << endl;
 	delete d;
 	previousData = 0;
       } else if (previousData){
 	//cerr << "chaining" << endl;
 	previousData->setNext(d);
+	d->setDataContainer(previousData->dataContainer());
         previousData = d;
 	//cerr << "done" << endl;
-      } else if (previousVertex){
+      } else if (previousDataContainer){
 	//cerr << "embedding in vertex" << endl;
-	previousVertex->setUserData(d);
+	previousDataContainer->setUserData(d);
+	d->setDataContainer(previousDataContainer);
 	previousData = d;
-	previousVertex = 0;
+	previousDataContainer = 0;
 	//cerr << "done" << endl;
       } else {
-        cerr << __PRETTY_FUNCTION__ << ": got data element, but no vertex available" << endl;
+        cerr << __PRETTY_FUNCTION__ << ": got data element, but no data container available" << endl;
         delete d;
 	previousData = 0;
       }
     }
   } // while read line
-  
+
+#ifndef NDEBUG
+  cerr << "Loaded " << _parameters.size() << " parameters" << endl;
+#endif
+
   return true;
 }
 
@@ -588,6 +664,7 @@ bool OptimizableGraph::save(const char* filename, int level) const
 
 bool OptimizableGraph::save(ostream& os, int level) const
 {
+  // write the parameters to the top of the file
   if (! _parameters.write(os))
     return false;
   set<Vertex*, VertexIDCompare> verticesToSave;
@@ -595,7 +672,8 @@ bool OptimizableGraph::save(ostream& os, int level) const
     OptimizableGraph::Edge* e = static_cast<OptimizableGraph::Edge*>(*it);
     if (e->level() == level) {
       for (vector<HyperGraph::Vertex*>::const_iterator it = e->vertices().begin(); it != e->vertices().end(); ++it) {
-        verticesToSave.insert(static_cast<OptimizableGraph::Vertex*>(*it));
+	if (*it)
+	  verticesToSave.insert(static_cast<OptimizableGraph::Vertex*>(*it));
       }
     }
   }
@@ -661,7 +739,8 @@ bool OptimizableGraph::saveSubset(ostream& os, HyperGraph::EdgeSet& eset)
     HyperGraph::Edge* e = *it;
     for (vector<HyperGraph::Vertex*>::const_iterator it = e->vertices().begin(); it != e->vertices().end(); ++it) {
       OptimizableGraph::Vertex* v = static_cast<OptimizableGraph::Vertex*>(*it);
-      vset.insert(v);
+      if (v)
+	vset.insert(v);
     }
   }
 
@@ -677,7 +756,7 @@ bool OptimizableGraph::saveSubset(ostream& os, HyperGraph::EdgeSet& eset)
 
   return os.good();
 }
-  
+
 void OptimizableGraph::addGraph(OptimizableGraph* g){
   for (HyperGraph::VertexIDMap::iterator it=g->vertices().begin(); it!=g->vertices().end(); ++it){
     OptimizableGraph::Vertex* v= (OptimizableGraph::Vertex*)(it->second);
@@ -814,6 +893,20 @@ bool OptimizableGraph::removePostIterationAction(HyperGraphAction* action)
   return _graphActions[AT_POSTITERATION].erase(action) > 0;
 }
 
+bool OptimizableGraph::saveUserData(std::ostream& os, HyperGraph::Data* d) const {
+  Factory* factory = Factory::instance();
+  while (d) { // write the data packet for the vertex
+    string tag = factory->tag(d);
+    if (tag.size() > 0) {
+      os << tag << " ";
+      d->write(os);
+      os << endl;
+    }
+	d=d->next();
+  }
+  return os.good();
+}
+
 bool OptimizableGraph::saveVertex(std::ostream& os, OptimizableGraph::Vertex* v) const
 {
   Factory* factory = Factory::instance();
@@ -822,22 +915,25 @@ bool OptimizableGraph::saveVertex(std::ostream& os, OptimizableGraph::Vertex* v)
     os << tag << " " << v->id() << " ";
     v->write(os);
     os << endl;
-    Data* d=v->userData();
-    while (d) { // write the data packet for the vertex
-      tag = factory->tag(d);
-      if (tag.size() > 0) {
-        os << tag << " ";
-        d->write(os);
-        os << endl;
-      }
-      d=d->next();
-    }
+    saveUserData(os, v->userData());
     if (v->fixed()) {
       os << "FIX " << v->id() << endl;
     }
     return os.good();
   }
   return false;
+}
+
+bool OptimizableGraph::saveParameter(std::ostream& os, Parameter* p) const
+{
+  Factory* factory = Factory::instance();
+  string tag = factory->tag(p);
+  if (tag.size() > 0) {
+    os << tag << " " << p->id() << " ";
+    p->write(os);
+    os << endl;
+  }
+  return os.good();
 }
 
 bool OptimizableGraph::saveEdge(std::ostream& os, OptimizableGraph::Edge* e) const
@@ -849,11 +945,12 @@ bool OptimizableGraph::saveEdge(std::ostream& os, OptimizableGraph::Edge* e) con
     if (_edge_has_id)
       os << e->id() << " ";
     for (vector<HyperGraph::Vertex*>::const_iterator it = e->vertices().begin(); it != e->vertices().end(); ++it) {
-      OptimizableGraph::Vertex* v = static_cast<OptimizableGraph::Vertex*>(*it);
-      os << v->id() << " ";
+      int vertexId = (*it) ? (*it)->id() : HyperGraph::UnassignedId;
+      os << vertexId << " ";
     }
     e->write(os);
     os << endl;
+    saveUserData(os, e->userData());
     return os.good();
   }
   return false;
@@ -861,16 +958,17 @@ bool OptimizableGraph::saveEdge(std::ostream& os, OptimizableGraph::Edge* e) con
 
 void OptimizableGraph::clearParameters()
 {
+  HyperGraph::clear();
   _parameters.clear();
 }
 
 bool OptimizableGraph::verifyInformationMatrices(bool verbose) const
 {
   bool allEdgeOk = true;
-  SelfAdjointEigenSolver<MatrixXd> eigenSolver;
+  Eigen::SelfAdjointEigenSolver<MatrixXD> eigenSolver;
   for (OptimizableGraph::EdgeSet::const_iterator it = edges().begin(); it != edges().end(); ++it) {
     OptimizableGraph::Edge* e = static_cast<OptimizableGraph::Edge*>(*it);
-    Eigen::MatrixXd::MapType information(e->informationData(), e->dimension(), e->dimension());
+    MatrixXD::MapType information(e->informationData(), e->dimension(), e->dimension());
     // test on symmetry
     bool isSymmetric = information.transpose() == information;
     bool okay = isSymmetric;

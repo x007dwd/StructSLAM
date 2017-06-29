@@ -35,6 +35,7 @@
 
 #include <string>
 
+#include "g2o_stuff_api.h"
 
 /** @addtogroup utils **/
 // @{
@@ -82,7 +83,7 @@ typedef struct timeval {
   long tv_sec;
   long tv_usec;
 } timeval;
- int gettimeofday(struct timeval *tv, struct timezone *tz);
+G2O_STUFF_API int gettimeofday(struct timeval *tv, struct timezone *tz);
 #endif
 
 /**
@@ -103,7 +104,7 @@ inline double get_time()
  * On Linux we call clock_gettime() on other systems we currently
  * call get_time().
  */
- double get_monotonic_time();
+G2O_STUFF_API double get_monotonic_time();
 
 /**
  * \brief Class to measure the time spent in a scope
@@ -111,7 +112,7 @@ inline double get_time()
  * To use this class, e.g. to measure the time spent in a function,
  * just create and instance at the beginning of the function.
  */
-class  ScopeTime {
+class G2O_STUFF_API ScopeTime {
   public: 
     ScopeTime(const char* title);
     ~ScopeTime();

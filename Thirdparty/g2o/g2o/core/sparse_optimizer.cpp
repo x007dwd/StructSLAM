@@ -38,10 +38,10 @@
 #include "batch_stats.h"
 #include "hyper_graph_action.h"
 #include "robust_kernel.h"
-#include "../stuff/timeutil.h"
-#include "../stuff/macros.h"
-#include "../stuff/misc.h"
-#include "../../config.h"
+#include "g2o/stuff/timeutil.h"
+#include "g2o/stuff/macros.h"
+#include "g2o/stuff/misc.h"
+#include "g2o/config.h"
 
 namespace g2o{
   using namespace std;
@@ -99,7 +99,7 @@ namespace g2o{
 
   double SparseOptimizer::activeRobustChi2() const
   {
-    Eigen::Vector3d rho;
+    Vector3D rho;
     double chi = 0.0;
     for (EdgeContainer::const_iterator it = _activeEdges.begin(); it != _activeEdges.end(); ++it) {
       const OptimizableGraph::Edge* e = *it;
@@ -208,6 +208,7 @@ namespace g2o{
       cerr << __PRETTY_FUNCTION__ << ": Attempt to initialize an empty graph" << endl;
       return false;
     }
+    preIteration(-1);
     bool workspaceAllocated = _jacobianWorkspace.allocate(); (void) workspaceAllocated;
     assert(workspaceAllocated && "Error while allocating memory for the Jacobians");
     clearIndexMapping();
@@ -245,7 +246,7 @@ namespace g2o{
 #      ifndef NDEBUG
         int estimateDim = v->estimateDimension();
         if (estimateDim > 0) {
-          Eigen::VectorXd estimateData(estimateDim);
+          VectorXD estimateData(estimateDim);
           if (v->getEstimateData(estimateData.data()) == true) {
             int k;
             bool hasNan = arrayHasNaN(estimateData.data(), estimateDim, &k);
@@ -263,10 +264,13 @@ namespace g2o{
       _activeEdges.push_back(*it);
 
     sortVectorContainers();
-    return buildIndexMapping(_activeVertices);
+    bool indexMappingStatus = buildIndexMapping(_activeVertices);
+    postIteration(-1);
+    return indexMappingStatus;
   }
 
   bool SparseOptimizer::initializeOptimization(HyperGraph::EdgeSet& eset){
+    preIteration(-1);
     bool workspaceAllocated = _jacobianWorkspace.allocate(); (void) workspaceAllocated;
     assert(workspaceAllocated && "Error while allocating memory for the Jacobians");
     clearIndexMapping();
@@ -276,6 +280,8 @@ namespace g2o{
     set<Vertex*> auxVertexSet; // temporary structure to avoid duplicates
     for (HyperGraph::EdgeSet::iterator it=eset.begin(); it!=eset.end(); ++it){
       OptimizableGraph::Edge* e=(OptimizableGraph::Edge*)(*it);
+      if (e->numUndefinedVertices())
+	continue;
       for (vector<HyperGraph::Vertex*>::const_iterator vit = e->vertices().begin(); vit != e->vertices().end(); ++vit) {
         auxVertexSet.insert(static_cast<OptimizableGraph::Vertex*>(*vit));
       }
@@ -287,7 +293,9 @@ namespace g2o{
       _activeVertices.push_back(*it);
 
     sortVectorContainers();
-    return buildIndexMapping(_activeVertices);
+    bool indexMappingStatus = buildIndexMapping(_activeVertices);
+    postIteration(-1);
+    return indexMappingStatus;
   }
 
   void SparseOptimizer::setToOrigin(){
@@ -312,6 +320,8 @@ namespace g2o{
       OptimizableGraph::Edge* e = *it;
       for (size_t i = 0; i < e->vertices().size(); ++i) {
         OptimizableGraph::Vertex* v = static_cast<OptimizableGraph::Vertex*>(e->vertex(i));
+	if (!v)
+	  continue;
         if (v->fixed())
           fixedVertices.insert(v);
         else { // check for having a prior which is able to fully initialize a vertex
@@ -417,7 +427,6 @@ namespace g2o{
     }
     return cjIterations;
   }
-
 
   void SparseOptimizer::update(const double* update)
   {
@@ -567,7 +576,7 @@ namespace g2o{
       _algorithm->setOptimizer(this);
   }
 
-  bool SparseOptimizer::computeMarginals(SparseBlockMatrix<MatrixXd>& spinv, const std::vector<std::pair<int, int> >& blockIndices){
+  bool SparseOptimizer::computeMarginals(SparseBlockMatrix<MatrixXD>& spinv, const std::vector<std::pair<int, int> >& blockIndices){
     return _algorithm->computeMarginals(spinv, blockIndices);
   }
 
@@ -576,14 +585,14 @@ namespace g2o{
     _forceStopFlag=flag;
   }
 
-  bool SparseOptimizer::removeVertex(HyperGraph::Vertex* v)
+  bool SparseOptimizer::removeVertex(HyperGraph::Vertex* v, bool detach)
   {
     OptimizableGraph::Vertex* vv = static_cast<OptimizableGraph::Vertex*>(v);
     if (vv->hessianIndex() >= 0) {
       clearIndexMapping();
       _ivMap.clear();
     }
-    return HyperGraph::removeVertex(v);
+    return HyperGraph::removeVertex(v, detach);
   }
 
   bool SparseOptimizer::addComputeErrorAction(HyperGraphAction* action)

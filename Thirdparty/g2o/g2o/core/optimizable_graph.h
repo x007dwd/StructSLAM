@@ -40,7 +40,8 @@
 #include "parameter_container.h"
 #include "jacobian_workspace.h"
 
-#include "../stuff/macros.h"
+#include "g2o/stuff/macros.h"
+#include "g2o_core_api.h"
 
 namespace g2o {
 
@@ -61,7 +62,7 @@ namespace g2o {
      also provides basic functionalities to handle the backup/restore
      of portions of the vertices.
    */
-  struct  OptimizableGraph : public HyperGraph {
+  struct G2O_CORE_API OptimizableGraph : public HyperGraph {
 
     enum ActionType {
       AT_PREITERATION, AT_POSTITERATION,
@@ -71,35 +72,14 @@ namespace g2o {
     typedef std::set<HyperGraphAction*>    HyperGraphActionSet;
 
     // forward declarations
-    class  Vertex;
-    class  Edge;
+    class G2O_CORE_API Vertex;
+    class G2O_CORE_API Edge;
 
-    /**
-     * \brief data packet for a vertex. Extend this class to store in the vertices
-     * the potential additional information you need (e.g. images, laser scans, ...).
-     */
-    class  Data : public HyperGraph::HyperGraphElement
-    {
-      friend struct OptimizableGraph;
-      public:
-        virtual ~Data();
-        Data();
-        //! read the data from a stream
-        virtual bool read(std::istream& is) = 0;
-        //! write the data to a stream
-        virtual bool write(std::ostream& os) const = 0;
-        virtual HyperGraph::HyperGraphElementType elementType() const { return HyperGraph::HGET_DATA;}
-        const Data* next() const {return _next;}
-        Data* next() {return _next;}
-        void setNext(Data* next_) { _next = next_; }
-      protected:
-        Data* _next; // linked list of multiple data;
-    };
 
     /**
      * \brief order vertices based on their ID
      */
-    struct  VertexIDCompare {
+    struct G2O_CORE_API VertexIDCompare {
       bool operator() (const Vertex* v1, const Vertex* v2) const
       {
         return v1->id() < v2->id();
@@ -109,7 +89,7 @@ namespace g2o {
     /**
      * \brief order edges based on the internal ID, which is assigned to the edge in addEdge()
      */
-    struct  EdgeIDCompare {
+    struct G2O_CORE_API EdgeIDCompare {
       bool operator() (const Edge* e1, const Edge* e2) const
       {
         return e1->internalId() < e2->internalId();
@@ -124,7 +104,7 @@ namespace g2o {
     /**
      * \brief A general case Vertex for optimization
      */
-    class  Vertex : public HyperGraph::Vertex {
+    class G2O_CORE_API Vertex : public HyperGraph::Vertex, public HyperGraph::DataContainer {
       private:
         friend struct OptimizableGraph;
       public:
@@ -132,18 +112,6 @@ namespace g2o {
 
         //! returns a deep copy of the current vertex
         virtual Vertex* clone() const ;
-
-        //! the user data associated with this vertex
-        const Data* userData() const { return _userData; }
-        Data* userData() { return _userData; }
-
-        void setUserData(Data* obs) { _userData = obs;}
-	void addUserData(Data* obs) { 
-	  if (obs) {
-	    obs->setNext(_userData);
-	    _userData=obs;
-	  }
-	}
 	
         virtual ~Vertex();
 
@@ -194,7 +162,7 @@ namespace g2o {
          * Implement setEstimateDataImpl()
          * @return true on success
          */
-        bool setEstimateData(const std::vector<double>& estimate) { 
+        bool setEstimateData(const std::vector<double>& estimate) {
 #ifndef NDEBUG
           int dim = estimateDimension();
           assert((dim == -1) || (estimate.size() == std::size_t(dim)));
@@ -323,7 +291,6 @@ namespace g2o {
         int colInHessian() const {return _colInHessian;}
 
         const OptimizableGraph* graph() const {return _graph;}
-
         OptimizableGraph* graph() {return _graph;}
 
         /**
@@ -378,18 +345,19 @@ namespace g2o {
         virtual bool setMinimalEstimateDataImpl(const double* ) { return false;}
 
     };
-    
-    class  Edge: public HyperGraph::Edge {
+
+    class G2O_CORE_API Edge: public HyperGraph::Edge, public HyperGraph::DataContainer {
       private:
         friend struct OptimizableGraph;
-      public:
+	
+    public:
         Edge();
         virtual ~Edge();
         virtual Edge* clone() const;
-
+	
         // indicates if all vertices are fixed
         virtual bool allVerticesFixed() const = 0;
-        
+
         // computes the error of the edge and stores it in an internal structure
         virtual void computeError() = 0;
 
@@ -422,7 +390,7 @@ namespace g2o {
         virtual const double* errorData() const = 0;
         virtual double* errorData() = 0;
 
-        //! returns the memory of the information matrix, usable for example with a Eigen::Map<MatrixXd>
+        //! returns the memory of the information matrix, usable for example with a Eigen::Map<MatrixXD>
         virtual const double* informationData() const = 0;
         virtual double* informationData() = 0;
 
@@ -471,8 +439,9 @@ namespace g2o {
         //! returns the dimensions of the error function
         int dimension() const { return _dimension;}
 
-        virtual Vertex* createFrom() {return 0;}
-        virtual Vertex* createTo()   {return 0;}
+        G2O_ATTRIBUTE_DEPRECATED(virtual Vertex* createFrom()) {return 0;}
+	G2O_ATTRIBUTE_DEPRECATED(virtual Vertex* createTo())   {return 0;}
+	virtual Vertex* createVertex(int) {return 0;}
 
         //! read the vertex from a stream, i.e., the internal state of the vertex
         virtual bool read(std::istream& is) = 0;
@@ -489,16 +458,15 @@ namespace g2o {
         inline const Parameter* parameter(int argNo) const {return *_parameters.at(argNo);}
         inline size_t numParameters() const {return _parameters.size();}
         inline void resizeParameters(size_t newSize) {
-          _parameters.resize(newSize, 0); 
+          _parameters.resize(newSize, 0);
           _parameterIds.resize(newSize, -1);
           _parameterTypes.resize(newSize, typeid(void*).name());
         }
       protected:
-        int _dimension;
+	int _dimension;
         int _level;
         RobustKernel* _robustKernel;
         long long _internalId;
-
         std::vector<int> _cacheIds;
 
         template <typename ParameterType>
@@ -512,8 +480,8 @@ namespace g2o {
           }
 
         template <typename CacheType>
-          void resolveCache(CacheType*& cache, OptimizableGraph::Vertex*, 
-              const std::string& _type, 
+          void resolveCache(CacheType*& cache, OptimizableGraph::Vertex*,
+              const std::string& _type,
               const ParameterVector& parameters);
 
         bool resolveParameters();
@@ -536,7 +504,7 @@ namespace g2o {
 
     //! adds all edges and vertices of the graph <i>g</i> to this graph.
     void addGraph(OptimizableGraph* g);
- 
+
     /**
      * adds a new vertex. The new vertex is then "taken".
      * @return false if a vertex with the same id as v is already in the graph, true otherwise.
@@ -550,6 +518,12 @@ namespace g2o {
      * @return false if the insertion does not work (incompatible types of the vertices/missing vertex). true otherwise.
      */
     virtual bool addEdge(HyperGraph::Edge* e);
+
+    /**
+     * overridden from HyperGraph, to mantain the bookkeeping of the caches/parameters and jacobian workspaces consistent upon a change in the veretx.
+     * @return false if something goes wriong.
+     */
+    virtual bool setEdgeVertex(HyperGraph::Edge* e, int pos, HyperGraph::Vertex* v);
 
     //! returns the chi2 of the current configuration
     double chi2() const;
@@ -598,7 +572,7 @@ namespace g2o {
     //! function provided for convenience, see save() above
     bool save(const char* filename, int level = 0) const;
 
-    
+
     //! save a subgraph to a stream. Again uses the Factory system.
     bool saveSubset(std::ostream& os, HyperGraph::VertexSet& vset, int level = 0);
 
@@ -653,8 +627,15 @@ namespace g2o {
     // helper functions to save an individual vertex
     bool saveVertex(std::ostream& os, Vertex* v) const;
 
+    // helper function to save an individual parameter
+    bool saveParameter(std::ostream& os, Parameter* v) const;
+
     // helper functions to save an individual edge
     bool saveEdge(std::ostream& os, Edge* e) const;
+
+    // helper functions to save the data packets
+    bool saveUserData(std::ostream& os, HyperGraph::Data* v) const;
+
     //! the workspace for storing the Jacobians of the graph
     JacobianWorkspace& jacobianWorkspace() { return _jacobianWorkspace;}
     const JacobianWorkspace& jacobianWorkspace() const { return _jacobianWorkspace;}
@@ -667,6 +648,9 @@ namespace g2o {
      */
     static bool initMultiThreading();
 
+    inline ParameterContainer& parameters() {return _parameters;}
+    inline const ParameterContainer& parameters() const {return _parameters;}
+
   protected:
     std::map<std::string, std::string> _renamedTypesLookup;
     long long _nextEdgeId;
@@ -678,11 +662,11 @@ namespace g2o {
     ParameterContainer _parameters;
     JacobianWorkspace _jacobianWorkspace;
   };
-  
+
   /**
     @}
    */
-  
+
 } // end namespace
 
 #endif

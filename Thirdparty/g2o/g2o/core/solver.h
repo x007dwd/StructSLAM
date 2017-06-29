@@ -30,6 +30,7 @@
 #include "hyper_graph.h"
 #include "batch_stats.h"
 #include "sparse_block_matrix.h"
+#include "g2o_core_api.h"
 #include <cstddef>
 
 namespace g2o {
@@ -40,7 +41,7 @@ namespace g2o {
   /**
    * \brief Generic interface for a sparse solver operating on a graph which solves one iteration of the linearized objective function
    */
-  class  Solver
+  class G2O_CORE_API Solver
   {
     public:
       Solver();
@@ -74,7 +75,7 @@ namespace g2o {
        * computes the block diagonal elements of the pattern specified in the input
        * and stores them in given SparseBlockMatrix
        */
-      virtual bool computeMarginals(SparseBlockMatrix<MatrixXd>& spinv, const std::vector<std::pair<int, int> >& blockIndices) = 0;
+      virtual bool computeMarginals(SparseBlockMatrix<MatrixXD>& spinv, const std::vector<std::pair<int, int> >& blockIndices) = 0;
 
       /**
        * update the system while performing Levenberg, i.e., modifying the diagonal

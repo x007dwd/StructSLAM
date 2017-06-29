@@ -29,14 +29,11 @@
 #include <fstream>
 #include <iomanip>
 
-#include "../stuff/timeutil.h"
-#include "../stuff/macros.h"
-#include "../stuff/misc.h"
+#include "g2o/stuff/timeutil.h"
+#include "g2o/stuff/macros.h"
+#include "g2o/stuff/misc.h"
 
 namespace g2o {
-
-using namespace std;
-using namespace Eigen;
 
 template <typename Traits>
 BlockSolver<Traits>::BlockSolver(LinearSolverType* linearSolver) :
@@ -94,42 +91,24 @@ void BlockSolver<Traits>::resize(int* blockPoseIndices, int numPoseBlocks,
 template <typename Traits>
 void BlockSolver<Traits>::deallocate()
 {
-  if (_Hpp){
-    delete _Hpp;
-    _Hpp=0;
-  }
-  if (_Hll){
-    delete _Hll;
-    _Hll=0;
-  }
-  if (_Hpl){
-    delete _Hpl;
-    _Hpl = 0;
-  }
-  if (_Hschur){
-    delete _Hschur;
-    _Hschur=0;
-  }
-  if (_DInvSchur){
-    delete _DInvSchur;
-    _DInvSchur=0;
-  }
-  if (_coefficients) {
-    delete[] _coefficients;
-    _coefficients = 0;
-  }
-  if (_bschur) {
-    delete[] _bschur;
-    _bschur = 0;
-  }
-  if (_HplCCS) {
-    delete _HplCCS;
-    _HplCCS = 0;
-  }
-  if (_HschurTransposedCCS) {
-    delete _HschurTransposedCCS;
-    _HschurTransposedCCS = 0;
-  }
+  delete _Hpp;
+  _Hpp=0;
+  delete _Hll;
+  _Hll=0;
+  delete _Hpl;
+  _Hpl = 0;
+  delete _Hschur;
+  _Hschur=0;
+  delete _DInvSchur;
+  _DInvSchur=0;
+  delete[] _coefficients;
+  _coefficients = 0;
+  delete[] _bschur;
+  _bschur = 0;
+  delete _HplCCS;
+  _HplCCS = 0;
+  delete _HschurTransposedCCS;
+  _HschurTransposedCCS = 0;
 }
 
 template <typename Traits>
@@ -220,7 +199,7 @@ bool BlockSolver<Traits>::buildStructure(bool zeroBlocks)
         ind1 = indexV1Bak;
         bool transposedBlock = ind1 > ind2;
         if (transposedBlock){ // make sure, we allocate the upper triangle block
-          swap(ind1, ind2);
+          std::swap(ind1, ind2);
         }
         if (! v1->marginalized() && !v2->marginalized()){
           PoseMatrixType* m = _Hpp->block(ind1, ind2, true);
@@ -253,8 +232,10 @@ bool BlockSolver<Traits>::buildStructure(bool zeroBlocks)
     }
   }
 
-  if (! _doSchur)
+  if (! _doSchur) {
+    delete schurMatrixLookup;
     return true;
+  }
 
   _DInvSchur->diagonal().resize(landmarkIdx);
   _Hpl->fillSparseBlockMatrixCCS(*_HplCCS);
@@ -334,7 +315,7 @@ bool BlockSolver<Traits>::updateStructure(const std::vector<HyperGraph::Vertex*>
         ind1 = indexV1Bak;
         bool transposedBlock = ind1 > ind2;
         if (transposedBlock) // make sure, we allocate the upper triangular block
-          swap(ind1, ind2);
+          std::swap(ind1, ind2);
 
         if (! v1->marginalized() && !v2->marginalized()) {
           PoseMatrixType* m = _Hpp->block(ind1, ind2, true);
@@ -487,7 +468,7 @@ bool BlockSolver<Traits>::solve(){
 
 
 template <typename Traits>
-bool BlockSolver<Traits>::computeMarginals(SparseBlockMatrix<MatrixXd>& spinv, const std::vector<std::pair<int, int> >& blockIndices)
+bool BlockSolver<Traits>::computeMarginals(SparseBlockMatrix<MatrixXD>& spinv, const std::vector<std::pair<int, int> >& blockIndices)
 {
   double t = get_monotonic_time();
   bool ok = _linearSolver->solvePattern(spinv, blockIndices, *_Hpp);
@@ -536,7 +517,7 @@ bool BlockSolver<Traits>::buildSystem()
       if (! v->fixed()) {
         bool hasANan = arrayHasNaN(jacobianWorkspace.workspaceForVertex(i), e->dimension() * v->dimension());
         if (hasANan) {
-          cerr << "buildSystem(): NaN within Jacobian for edge " << e << " for vertex " << i << endl;
+          std::cerr << "buildSystem(): NaN within Jacobian for edge " << e << " for vertex " << i << std::endl;
           break;
         }
       }

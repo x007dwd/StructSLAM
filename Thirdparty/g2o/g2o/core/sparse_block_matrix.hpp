@@ -25,7 +25,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace g2o {
-  using namespace Eigen;
 
   namespace {
     struct TripletEntry
@@ -239,8 +238,8 @@ namespace g2o {
     }
 
     // map the memory by Eigen
-    Eigen::Map<VectorXd> destVec(dest, rows());
-    const Eigen::Map<const VectorXd> srcVec(src, cols());
+    Eigen::Map<VectorXD> destVec(dest, rows());
+    const Eigen::Map<const VectorXD> srcVec(src, cols());
 
     for (size_t i=0; i<_blockCols.size(); ++i){
       int srcOffset = i ? _colBlockIndices[i-1] : 0;
@@ -249,7 +248,7 @@ namespace g2o {
         const typename SparseBlockMatrix<MatrixType>::SparseMatrixBlock* a=it->second;
         int destOffset = it->first ? _rowBlockIndices[it->first - 1] : 0;
         // destVec += *a * srcVec (according to the sub-vector parts)
-        internal::axpy(*a, srcVec, srcOffset, destVec, destOffset);
+        internal::template axpy<typename SparseBlockMatrix<MatrixType>::SparseMatrixBlock>(*a, srcVec, srcOffset, destVec, destOffset);
       }
     }
   }
@@ -263,8 +262,8 @@ namespace g2o {
     }
 
     // map the memory by Eigen
-    Eigen::Map<VectorXd> destVec(dest, rows());
-    const Eigen::Map<const VectorXd> srcVec(src, cols());
+    Eigen::Map<VectorXD> destVec(dest, rows());
+    const Eigen::Map<const VectorXD> srcVec(src, cols());
 
     for (size_t i=0; i<_blockCols.size(); ++i){
       int srcOffset = colBaseOfBlock(i);
@@ -274,9 +273,9 @@ namespace g2o {
         if (destOffset > srcOffset) // only upper triangle
           break;
         // destVec += *a * srcVec (according to the sub-vector parts)
-        internal::axpy(*a, srcVec, srcOffset, destVec, destOffset);
+        internal::template axpy<typename SparseBlockMatrix<MatrixType>::SparseMatrixBlock>(*a, srcVec, srcOffset, destVec, destOffset);
         if (destOffset < srcOffset)
-          internal::atxpy(*a, srcVec, destOffset, destVec, srcOffset);
+          internal::template atxpy<typename SparseBlockMatrix<MatrixType>::SparseMatrixBlock>(*a, srcVec, destOffset, destVec, srcOffset);
       }
     }
   }
@@ -291,8 +290,8 @@ namespace g2o {
     }
 
     // map the memory by Eigen
-    Eigen::Map<VectorXd> destVec(dest, destSize);
-    Eigen::Map<const VectorXd> srcVec(src, rows());
+    Eigen::Map<VectorXD> destVec(dest, destSize);
+    Eigen::Map<const VectorXD> srcVec(src, rows());
 
 #   ifdef G2O_OPENMP
 #   pragma omp parallel for default (shared) schedule(dynamic, 10)
@@ -305,7 +304,7 @@ namespace g2o {
         const typename SparseBlockMatrix<MatrixType>::SparseMatrixBlock* a=it->second;
         int srcOffset = rowBaseOfBlock(it->first);
         // destVec += *a.transpose() * srcVec (according to the sub-vector parts)
-        internal::atxpy(*a, srcVec, srcOffset, destVec, destOffset);
+        internal::template atxpy<typename SparseBlockMatrix<MatrixType>::SparseMatrixBlock>(*a, srcVec, srcOffset, destVec, destOffset);
       }
     }
     
@@ -642,7 +641,7 @@ namespace g2o {
       std::sort(sparseRowSorted.begin(), sparseRowSorted.end(), CmpPairFirst<int, MatrixType*>());
       // try to free some memory early
       HashSparseColumn aux;
-      swap(aux, column);
+      std::swap(aux, column);
       // now insert sorted vector to the std::map structure
       IntBlockMap& destColumnMap = blockCols()[i];
       destColumnMap.insert(sparseRowSorted[0]);

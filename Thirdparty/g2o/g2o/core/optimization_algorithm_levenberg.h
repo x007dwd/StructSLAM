@@ -28,13 +28,14 @@
 #define G2O_SOLVER_LEVENBERG_H
 
 #include "optimization_algorithm_with_hessian.h"
+#include "g2o_core_api.h"
 
 namespace g2o {
 
   /**
    * \brief Implementation of the Levenberg Algorithm
    */
-  class  OptimizationAlgorithmLevenberg : public OptimizationAlgorithmWithHessian
+  class G2O_CORE_API OptimizationAlgorithmLevenberg : public OptimizationAlgorithmWithHessian
   {
     public:
       /**
@@ -75,8 +76,6 @@ namespace g2o {
       double _goodStepUpperScale; ///< upper bound for lambda decrease if a good LM step
       double _ni;
       int _levenbergIterations;   ///< the numer of levenberg iterations performed to accept the last step
-      //RAUL
-      int _nBad;
 
       /**
        * helper for Levenberg, this function computes the initial damping factor, if the user did not

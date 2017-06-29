@@ -32,11 +32,9 @@
 
 #include "base_edge.h"
 #include "robust_kernel.h"
-#include "../../config.h"
+#include "g2o/config.h"
 
 namespace g2o {
-
-  using namespace Eigen;
 
   template <int D, typename E, typename VertexXi, typename VertexXj>
   class BaseBinaryEdge : public BaseEdge<D, E>
@@ -51,13 +49,15 @@ namespace g2o {
 
       static const int Dimension = BaseEdge<D, E>::Dimension;
       typedef typename BaseEdge<D,E>::Measurement Measurement;
-      typedef typename Matrix<double, D, Di>::AlignedMapType JacobianXiOplusType;
-      typedef typename Matrix<double, D, Dj>::AlignedMapType JacobianXjOplusType;
+      typedef typename Eigen::Matrix<double, D, Di, D==1?Eigen::RowMajor:Eigen::ColMajor>::AlignedMapType JacobianXiOplusType;
+      typedef typename Eigen::Matrix<double, D, Dj, D==1?Eigen::RowMajor:Eigen::ColMajor>::AlignedMapType JacobianXjOplusType;
       typedef typename BaseEdge<D,E>::ErrorVector ErrorVector;
       typedef typename BaseEdge<D,E>::InformationType InformationType;
 
-      typedef Eigen::Map<Matrix<double, Di, Dj>, Matrix<double, Di, Dj>::Flags & AlignedBit ? Aligned : Unaligned > HessianBlockType;
-      typedef Eigen::Map<Matrix<double, Dj, Di>, Matrix<double, Dj, Di>::Flags & AlignedBit ? Aligned : Unaligned > HessianBlockTransposedType;
+      typedef Eigen::Map<Eigen::Matrix<double, Di, Dj, Di==1?Eigen::RowMajor:Eigen::ColMajor>,
+                         Eigen::Matrix<double, Di, Dj, Di==1?Eigen::RowMajor:Eigen::ColMajor>::Flags & Eigen::PacketAccessBit ? Eigen::Aligned : Eigen::Unaligned > HessianBlockType;
+      typedef Eigen::Map<Eigen::Matrix<double, Dj, Di, Dj==1?Eigen::RowMajor:Eigen::ColMajor>,
+                         Eigen::Matrix<double, Dj, Di, Dj==1?Eigen::RowMajor:Eigen::ColMajor>::Flags & Eigen::PacketAccessBit ? Eigen::Aligned : Eigen::Unaligned > HessianBlockTransposedType;
 
       BaseBinaryEdge() : BaseEdge<D,E>(),
       _hessianRowMajor(false),
@@ -70,6 +70,7 @@ namespace g2o {
 
       virtual OptimizableGraph::Vertex* createFrom();
       virtual OptimizableGraph::Vertex* createTo();
+      virtual OptimizableGraph::Vertex* createVertex(int i);
 
       virtual void resize(size_t size);
 

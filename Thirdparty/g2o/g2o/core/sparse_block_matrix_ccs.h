@@ -31,14 +31,10 @@
 #include <cassert>
 #include <Eigen/Core>
 
-#include "../../config.h"
+#include "g2o/config.h"
 #include "matrix_operations.h"
 
-#ifdef _MSC_VER
 #include <unordered_map>
-#else
-#include <unordered_map>
-#endif
 
 namespace g2o {
 
@@ -122,7 +118,7 @@ namespace g2o {
             const SparseMatrixBlock* a = it->block;
             int srcOffset = rowBaseOfBlock(it->row);
             // destVec += *a.transpose() * srcVec (according to the sub-vector parts)
-            internal::atxpy(*a, srcVec, srcOffset, destVec, destOffset);
+            internal::template atxpy<SparseMatrixBlock>(*a, srcVec, srcOffset, destVec, destOffset);
           }
         }
       }

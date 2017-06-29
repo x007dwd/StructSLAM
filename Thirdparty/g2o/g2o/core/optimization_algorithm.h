@@ -31,10 +31,11 @@
 #include <utility>
 #include <iosfwd>
 
-#include "../stuff/property.h"
+#include "g2o/stuff/property.h"
 
 #include "hyper_graph.h"
 #include "sparse_block_matrix.h"
+#include "g2o_core_api.h"
 
 namespace g2o {
 
@@ -43,10 +44,10 @@ namespace g2o {
   /**
    * \brief Generic interface for a non-linear solver operating on a graph
    */
-  class  OptimizationAlgorithm
+  class G2O_CORE_API OptimizationAlgorithm
   {
     public:
-      enum  SolverResult {Terminate=2, OK=1, Fail=-1};
+      enum G2O_CORE_API SolverResult {Terminate=2, OK=1, Fail=-1};
       OptimizationAlgorithm();
       virtual ~OptimizationAlgorithm();
 
@@ -67,7 +68,7 @@ namespace g2o {
        * and stores them in given SparseBlockMatrix.
        * If your solver does not support computing the marginals, return false.
        */
-      virtual bool computeMarginals(SparseBlockMatrix<MatrixXd>& spinv, const std::vector<std::pair<int, int> >& blockIndices) = 0;
+      virtual bool computeMarginals(SparseBlockMatrix<MatrixXD>& spinv, const std::vector<std::pair<int, int> >& blockIndices) = 0;
 
       /**
        * update the structures for online processing

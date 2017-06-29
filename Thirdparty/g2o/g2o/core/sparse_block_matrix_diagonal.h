@@ -31,7 +31,7 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
-#include "../../config.h"
+#include "g2o/config.h"
 #include "matrix_operations.h"
 
 namespace g2o {
@@ -94,7 +94,7 @@ namespace g2o {
           int srcOffset = destOffset;
           const SparseMatrixBlock& A = _diagonal[i];
           // destVec += *A.transpose() * srcVec (according to the sub-vector parts)
-          internal::axpy(A, srcVec, srcOffset, destVec, destOffset);
+          internal::template axpy<SparseMatrixBlock>(A, srcVec, srcOffset, destVec, destOffset);
         }
       }
 

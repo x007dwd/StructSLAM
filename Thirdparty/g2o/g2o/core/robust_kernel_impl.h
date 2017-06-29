@@ -28,6 +28,7 @@
 #define G2O_ROBUST_KERNEL_IMPL_H
 
 #include "robust_kernel.h"
+#include "g2o_core_api.h"
 
 namespace g2o {
 
@@ -38,7 +39,7 @@ namespace g2o {
    * one implements a kernel which only is designed for a fixed window
    * size.
    */
-  class  RobustKernelScaleDelta : public RobustKernel
+  class G2O_CORE_API RobustKernelScaleDelta : public RobustKernel
   {
     public:
       /**
@@ -53,7 +54,7 @@ namespace g2o {
       //! use another kernel for the underlying operation
       void setKernel(const RobustKernelPtr& ptr);
 
-      void robustify(double error, Eigen::Vector3d& rho) const;
+      void robustify(double error, Vector3D& rho) const;
 
     protected:
       RobustKernelPtr _kernel;
@@ -73,39 +74,11 @@ namespace g2o {
    *               1/2    2
    * rho(e) = 2 d e    - d
    */
-  class  RobustKernelHuber : public RobustKernel
+  class G2O_CORE_API RobustKernelHuber : public RobustKernel
   {
     public:
-      virtual void setDelta(double delta);
-      virtual void setDeltaSqr(const double &delta, const double &deltaSqr);
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
-
-    private:
-      float dsqr;
+      virtual void robustify(double e2, Vector3D& rho) const;
   };
-
-   /**
-   * \brief Tukey Cost Function
-   *
-   *
-   * If e^(1/2) < d
-   * rho(e) = delta2(1-(1-e/delta2)^3)
-   *
-   * else
-   *              
-   * rho(e) = delta2
-   */
-  class  RobustKernelTukey : public RobustKernel
-  {
-    public:
-
-      virtual void setDeltaSqr(const double &deltaSqr, const double &inv);
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
-    private:
-      float _deltaSqr;
-      float _invDeltaSqr;
-  };
-
 
   /**
    * \brief Pseudo Huber Cost Function
@@ -118,10 +91,10 @@ namespace g2o {
    *             2
    *            d
    */
-  class  RobustKernelPseudoHuber : public RobustKernel
+  class G2O_CORE_API RobustKernelPseudoHuber : public RobustKernel
   {
     public:
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+      virtual void robustify(double e2, Vector3D& rho) const;
   };
 
   /**
@@ -132,10 +105,71 @@ namespace g2o {
    *         2
    *        d
    */
-  class  RobustKernelCauchy : public RobustKernel
+  class G2O_CORE_API RobustKernelCauchy : public RobustKernel
   {
     public:
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+      virtual void robustify(double e2, Vector3D& rho) const;
+  };
+
+  /**
+   * \brief Geman-McClure cost function
+   *
+   * See http://research.microsoft.com/en-us/um/people/zhang/Papers/ZhangIVC-97-01.pdf
+   * and http://www2.informatik.uni-freiburg.de/~agarwal/resources/agarwal-thesis.pdf
+   *    e2
+   *  -----
+   *  e2 + 1
+   */
+  class G2O_CORE_API RobustKernelGemanMcClure : public RobustKernel
+  {
+    public:
+      virtual void robustify(double e2, Vector3D& rho) const;
+  };
+
+  /**
+   * \brief Welsch cost function
+   *
+   * See http://research.microsoft.com/en-us/um/people/zhang/Papers/ZhangIVC-97-01.pdf
+   *
+   * d^2 [1 - exp(- e2/d^2)]
+   *
+   */
+  class G2O_CORE_API RobustKernelWelsch : public RobustKernel
+  {
+    public:
+      virtual void robustify(double e2, Vector3D& rho) const;
+  };
+
+  /**
+   * \brief Fair cost function
+   *
+   * See http://research.microsoft.com/en-us/um/people/zhang/Papers/ZhangIVC-97-01.pdf
+   *
+   * 2 * d^2 [e2 / d - log (1 + e2 / d)]
+   *
+   */
+  class G2O_CORE_API RobustKernelFair : public RobustKernel
+  {
+    public:
+      virtual void robustify(double e2, Vector3D& rho) const;
+  };
+
+  /**
+   * \brief Tukey Cost Function
+   *
+   * See http://research.microsoft.com/en-us/um/people/zhang/Papers/ZhangIVC-97-01.pdf
+   *
+   * If e2^(1/2) <= d
+   * rho(e) = d^2 * (1 - ( 1 - e2 / d^2)^3) / 3
+   *
+   * else
+   *
+   * rho(e) = d^2 / 3
+   */
+  class G2O_CORE_API RobustKernelTukey : public RobustKernel
+  {
+    public:
+      virtual void robustify(double e2, Vector3D& rho) const;
   };
 
   /**
@@ -143,25 +177,24 @@ namespace g2o {
    *
    * The error is at most delta^2
    */
-  class  RobustKernelSaturated : public RobustKernel
+  class G2O_CORE_API RobustKernelSaturated : public RobustKernel
   {
     public:
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+      virtual void robustify(double e2, Vector3D& rho) const;
   };
 
   /**
    * \brief Dynamic covariance scaling - DCS
-   *  
+   *
    * See paper Robust Map Optimization from Agarwal et al.  ICRA 2013
    *
    * delta is used as $phi$
    */
-  class  RobustKernelDCS : public RobustKernel
+  class G2O_CORE_API RobustKernelDCS : public RobustKernel
   {
     public:
-      virtual void robustify(double e2, Eigen::Vector3d& rho) const;
+      virtual void robustify(double e2, Vector3D& rho) const;
   };
-
 } // end namespace g2o
 
 #endif
