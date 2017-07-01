@@ -4,6 +4,11 @@
 
 #include "edge_se3_lineendpts.h"
 
+#ifdef G2O_HAVE_OPENGL
+#include "g2o/stuff/opengl_wrapper.h"
+#endif
+
+#include <iostream>
 
 namespace g2o {
     using namespace std;

@@ -95,3 +95,13 @@ target_link_libraries(
         ${YGZ_LIBS}
         ${THIRD_PARTY_LIBS}
 )
+
+add_executable(
+        test_g2o_line test_g2o_line.cpp
+)
+
+target_link_libraries(
+        test_g2o_line
+        ${YGZ_LIBS}
+        ${THIRD_PARTY_LIBS}
+)

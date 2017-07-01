@@ -62,7 +62,7 @@ if (NOT OpenCV_FOUND)
     endif ()
 endif ()
 
-set(G2O_ROOT "/home/bobin/code/libraries/g2o")
+#set(G2O_ROOT "/home/bobin/code/libraries/g2o")
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(Glog REQUIRED)
